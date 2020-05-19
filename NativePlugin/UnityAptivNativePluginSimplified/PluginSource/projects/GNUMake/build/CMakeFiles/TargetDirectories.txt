@@ -1,3 +1,0 @@
-/media/parminder/Data/Dev/Unity/test18May/UnityAptivNativePlugin/PluginSource/projects/GNUMake/build/CMakeFiles/rebuild_cache.dir
-/media/parminder/Data/Dev/Unity/test18May/UnityAptivNativePlugin/PluginSource/projects/GNUMake/build/CMakeFiles/RenderingPlugin.dir
-/media/parminder/Data/Dev/Unity/test18May/UnityAptivNativePlugin/PluginSource/projects/GNUMake/build/CMakeFiles/edit_cache.dir
