@@ -360,7 +360,7 @@ public:
 
 	/** @brief (Virtual) Called when the UI overlay is updating, can be used to add custom elements to the overlay */
         //virtual void OnUpdateUIOverlay(vks::UIOverlay *overlay);
-    friend class RenderAPI_VulkanNew;
+    friend class VulkanExample;
 };
 
 // OS specific macros for the example main entry points

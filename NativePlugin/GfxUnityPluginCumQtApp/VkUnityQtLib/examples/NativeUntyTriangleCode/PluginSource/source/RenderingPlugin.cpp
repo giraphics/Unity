@@ -1,4 +1,4 @@
-#include "RenderAPI.h"
+#include "../../Common/RenderAPI_Vulkan.h"
 
 #include <assert.h>
 #include <math.h>
@@ -58,9 +58,8 @@ extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API RegisterPlugin()
 // GraphicsDeviceEvent
 
 
-static RenderAPI* s_CurrentAPI = NULL;
+static /*RenderAPI*/VulkanExample* s_CurrentAPI = NULL;
 static UnityGfxRenderer s_DeviceType = kUnityGfxRendererNull;
-
 
 static void UNITY_INTERFACE_API OnGraphicsDeviceEvent(UnityGfxDeviceEventType eventType)
 {
@@ -69,7 +68,12 @@ static void UNITY_INTERFACE_API OnGraphicsDeviceEvent(UnityGfxDeviceEventType ev
 	{
 		assert(s_CurrentAPI == NULL);
 		s_DeviceType = s_Graphics->GetRenderer();
-        s_CurrentAPI = CreateRenderAPI(s_DeviceType);
+//        s_CurrentAPI = CreateRenderAPI(s_DeviceType);
+        if (s_DeviceType == kUnityGfxRendererVulkan)
+        {
+            s_CurrentAPI = new VulkanExample();
+        }
+
 	}
 
 	// Let the implementation process the device related events

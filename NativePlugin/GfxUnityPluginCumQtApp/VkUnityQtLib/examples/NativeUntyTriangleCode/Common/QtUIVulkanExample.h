@@ -16,10 +16,10 @@
 #include <vulkan/vulkan.h>
 #include "vulkanexamplebase.h"
 
-#include "../../data/shaders/triangle/triangleShaders.h"
 #ifdef UNITY_BUILD
 #include "Unity/IUnityGraphicsVulkan.h"
 #endif
+#include "Unity/IUnityGraphics.h"
 
 // Set to "true" to enable Vulkan's validation layers (see vulkandebug.cpp for details)
 #define ENABLE_VALIDATION false
@@ -356,7 +356,9 @@ public:
 #endif
     }
 
-//protected:
+    virtual void ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityInterfaces* interfaces) {}
+    virtual void DrawTriangle() {}
+
 #ifdef UNITY_BUILD
     IUnityGraphicsVulkan* m_UnityVulkan = NULL;
     XXUnityVulkanInstance m_Instance;

@@ -1,56 +1,124 @@
 #include "RenderAPI_Vulkan.h"
 
-#include <fstream>
-#include <map>
-#include <math.h>
-#include <string.h>
-#include <vector>
+#include "../../VkUnityQtLib/data/shaders/triangle/triangleShaders.h"
 
+#ifdef UNITY_BUILD
 #include "VkQtUnityCommon.h"
-#include "triangleShaders.h"
-
-static void LoadVulkanAPI(PFN_vkGetInstanceProcAddr getInstanceProcAddr, VkInstance instance)
-{
-//    if (!vkGetInstanceProcAddr && getInstanceProcAddr)
-//        vkGetInstanceProcAddr = getInstanceProcAddr;
-
-//    if (!vkCreateInstance)
-//        vkCreateInstance = (PFN_vkCreateInstance)vkGetInstanceProcAddr(VK_NULL_HANDLE, "vkCreateInstance");
-
-//UNITY_USED_VULKAN_API_FUNCTIONS(LOAD_VULKAN_FUNC);
-}
-
-static PFN_vkGetInstanceProcAddr UNITY_INTERFACE_API InterceptVulkanInitialization(PFN_vkGetInstanceProcAddr getInstanceProcAddr, void*)
-{
-    return vkGetInstanceProcAddr;// = getInstanceProcAddr;
-    //return Hook_vkGetInstanceProcAddr;
-}
-
-static VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateInstance(const VkInstanceCreateInfo* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkInstance* pInstance)
-{
-    //vkCreateInstance = (PFN_vkCreateInstance)vkGetInstanceProcAddr(VK_NULL_HANDLE, "vkCreateInstance");
-    VkResult result = vkCreateInstance(pCreateInfo, pAllocator, pInstance);
-    if (result == VK_SUCCESS)
-        LoadVulkanAPI(vkGetInstanceProcAddr, *pInstance);
-
-    return result;
-}
 
 extern "C" void RenderAPI_Vulkan_OnPluginLoad(IUnityInterfaces* interfaces)
 {
     interfaces->Get<IUnityGraphicsVulkan>()->InterceptInitialization(InterceptVulkanInitialization, NULL);
 }
+#endif
 
-RenderAPI_VulkanNew::RenderAPI_VulkanNew()
+static VKAPI_ATTR void VKAPI_CALL Hook_vkCmdBeginRenderPass(VkCommandBuffer commandBuffer, const VkRenderPassBeginInfo* pRenderPassBegin, VkSubpassContents contents)
+{
+    // Change this to 'true' to override the clear color with green
+    const bool allowOverrideClearColor = true; // Parminder: changed to true
+    if (pRenderPassBegin->clearValueCount <= 16 && pRenderPassBegin->clearValueCount > 0 && allowOverrideClearColor)
+    {
+        VkClearValue clearValues[16] = {};
+        memcpy(clearValues, pRenderPassBegin->pClearValues, pRenderPassBegin->clearValueCount * sizeof(VkClearValue));
+
+        VkRenderPassBeginInfo patchedBeginInfo = *pRenderPassBegin;
+        patchedBeginInfo.pClearValues = clearValues;
+        for (unsigned int i = 0; i < pRenderPassBegin->clearValueCount - 1; ++i)
+        {
+            clearValues[i].color.float32[0] = 1.0f;
+            clearValues[i].color.float32[1] = 1.0f;
+            clearValues[i].color.float32[2] = 0.2f;
+            clearValues[i].color.float32[3] = 1.0f;
+        }
+        vkCmdBeginRenderPass(commandBuffer, &patchedBeginInfo, contents);
+    }
+    else
+    {
+        vkCmdBeginRenderPass(commandBuffer, pRenderPassBegin, contents);
+    }
+}
+
+VulkanExample::VulkanExample()
     : QtUIVulkanExample()
 {
+    title = "Test Triangle";
+    camera.type = Camera::CameraType::lookat;
+    camera.setPosition(glm::vec3(0.0f, 0.0f, -2.5f));
+    camera.setRotation(glm::vec3(0.0f));
+    camera.setPerspective(60.0f, (float)width / (float)height, 1.0f, 256.0f);
 }
 
-RenderAPI_VulkanNew::~RenderAPI_VulkanNew()
+VulkanExample::~VulkanExample()
 {
+    vkDestroyPipeline(device, pipeline, nullptr);
+    vkDestroyBuffer(device, vertices.buffer, nullptr);
+    vkFreeMemory(device, vertices.memory, nullptr);
 }
 
-void RenderAPI_VulkanNew::ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityInterfaces* interfaces)
+#ifndef UNITY_BUILD
+void VulkanExample::buildCommandBuffers()
+{
+    VkCommandBufferBeginInfo cmdBufInfo = {};
+    cmdBufInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    cmdBufInfo.pNext = nullptr;
+
+    // Set clear values for all framebuffer attachments with loadOp set to clear
+    // We use two attachments (color and depth) that are cleared at the start of the subpass and as such we need to set clear values for both
+    VkClearValue clearValues[2];
+    clearValues[0].color = { { 0.0f, 0.0f, 0.2f, 1.0f } };
+    clearValues[1].depthStencil = { 1.0f, 0 };
+
+    VkRenderPassBeginInfo renderPassBeginInfo = {};
+    renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    renderPassBeginInfo.pNext = nullptr;
+    renderPassBeginInfo.renderPass = renderPass;
+    renderPassBeginInfo.renderArea.offset.x = 0;
+    renderPassBeginInfo.renderArea.offset.y = 0;
+    renderPassBeginInfo.renderArea.extent.width = width;
+    renderPassBeginInfo.renderArea.extent.height = height;
+    renderPassBeginInfo.clearValueCount = 2;
+    renderPassBeginInfo.pClearValues = clearValues;
+
+    for (int32_t i = 0; i < drawCmdBuffers.size(); ++i)
+    {
+        // Set target frame buffer
+        renderPassBeginInfo.framebuffer = frameBuffers[i];
+
+        VK_CHECK_RESULT(vkBeginCommandBuffer(drawCmdBuffers[i], &cmdBufInfo));
+
+        // Start the first sub pass specified in our default render pass setup by the base class
+        // This will clear the color and depth attachment
+        //vkCmdBeginRenderPass(drawCmdBuffers[i], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+        Hook_vkCmdBeginRenderPass(drawCmdBuffers[i], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+        // Update dynamic viewport state
+        VkViewport viewport = {};
+        viewport.height = (float)height;
+        viewport.width = (float)width;
+        viewport.minDepth = (float) 0.0f;
+        viewport.maxDepth = (float) 1.0f;
+        vkCmdSetViewport(drawCmdBuffers[i], 0, 1, &viewport);
+
+        // Update dynamic scissor state
+        VkRect2D scissor = {};
+        scissor.extent.width = width;
+        scissor.extent.height = height;
+        scissor.offset.x = 0;
+        scissor.offset.y = 0;
+        vkCmdSetScissor(drawCmdBuffers[i], 0, 1, &scissor);
+
+        paint(drawCmdBuffers[i]);
+
+        vkCmdEndRenderPass(drawCmdBuffers[i]);
+
+        // Ending the render pass will add an implicit barrier transitioning the frame buffer color attachment to
+        // VK_IMAGE_LAYOUT_PRESENT_SRC_KHR for presenting it to the windowing system
+
+        VK_CHECK_RESULT(vkEndCommandBuffer(drawCmdBuffers[i]));
+    }
+}
+#endif
+
+#ifdef UNITY_BUILD
+void VulkanExample::ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityInterfaces* interfaces)
 {
     switch (type)
     {
@@ -105,8 +173,106 @@ void RenderAPI_VulkanNew::ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnit
         break;
     }
 }
+#endif
 
-void RenderAPI_VulkanNew::preparePipelines()
+void VulkanExample::render()
+{
+#ifdef UNITY_BUILD
+#else
+    if (!prepared)
+        return;
+    draw();
+#endif
+}
+
+void VulkanExample::prepareVertices()
+{
+    // Setup vertices
+    std::vector<Vertex> vertexBuffer =
+    {
+        { {  1.0f,  1.0f, 0.0f }, { 1.0f, 0.0f, 0.0f } },
+        { { -1.0f,  1.0f, 0.0f }, { 0.0f, 1.0f, 0.0f } },
+        { {  0.0f, -1.0f, 0.0f }, { 0.0f, 0.0f, 1.0f } }
+    };
+    uint32_t vertexBufferSize = static_cast<uint32_t>(vertexBuffer.size()) * sizeof(Vertex);
+
+    VkMemoryAllocateInfo memAlloc = {};
+    memAlloc.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    VkMemoryRequirements memReqs;
+
+    void *data;
+    VkBufferCreateInfo vertexBufferInfo = {};
+    vertexBufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    vertexBufferInfo.size = vertexBufferSize;
+    vertexBufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+
+    // Copy vertex data to a buffer visible to the host
+    VK_CHECK_RESULT(vkCreateBuffer(device, &vertexBufferInfo, nullptr, &vertices.buffer));
+    vkGetBufferMemoryRequirements(device, vertices.buffer, &memReqs);
+    memAlloc.allocationSize = memReqs.size;
+    // VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT is host visible memory, and VK_MEMORY_PROPERTY_HOST_COHERENT_BIT makes sure writes are directly visible
+    memAlloc.memoryTypeIndex = getMemoryTypeIndex(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    VK_CHECK_RESULT(vkAllocateMemory(device, &memAlloc, nullptr, &vertices.memory));
+    VK_CHECK_RESULT(vkMapMemory(device, vertices.memory, 0, memAlloc.allocationSize, 0, &data));
+    memcpy(data, vertexBuffer.data(), vertexBufferSize);
+    vkUnmapMemory(device, vertices.memory);
+    VK_CHECK_RESULT(vkBindBufferMemory(device, vertices.buffer, vertices.memory, 0));
+}
+
+VkShaderModule VulkanExample::loadSPIRVShader(std::string filename)
+{
+    size_t shaderSize;
+    char* shaderCode = NULL;
+
+    std::ifstream is(filename, std::ios::binary | std::ios::in | std::ios::ate);
+
+    if (is.is_open())
+    {
+        shaderSize = is.tellg();
+        is.seekg(0, std::ios::beg);
+        // Copy file contents into a buffer
+        shaderCode = new char[shaderSize];
+        is.read(shaderCode, shaderSize);
+        is.close();
+        assert(shaderSize > 0);
+    }
+
+    if (shaderCode)
+    {
+        // Create a new shader module that will be used for pipeline creation
+        VkShaderModuleCreateInfo moduleCreateInfo{};
+        moduleCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+        moduleCreateInfo.codeSize = shaderSize;
+        moduleCreateInfo.pCode = (uint32_t*)shaderCode;
+
+        VkShaderModule shaderModule;
+        VK_CHECK_RESULT(vkCreateShaderModule(device, &moduleCreateInfo, NULL, &shaderModule));
+
+        delete[] shaderCode;
+
+        return shaderModule;
+    }
+    else
+    {
+        std::cerr << "Error: Could not open shader file \"" << filename << "\"" << std::endl;
+        return VK_NULL_HANDLE;
+    }
+}
+
+VkShaderModule VulkanExample::loadSPIRVShader(const uint32_t *pCode, size_t codeSize)
+{
+    VkShaderModuleCreateInfo moduleCreateInfo{};
+    moduleCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+    moduleCreateInfo.codeSize = codeSize;
+    moduleCreateInfo.pCode = pCode;
+
+    VkShaderModule shaderModule;
+    VK_CHECK_RESULT(vkCreateShaderModule(device, &moduleCreateInfo, NULL, &shaderModule));
+
+    return shaderModule;
+}
+
+void VulkanExample::preparePipelines()
 {
     // Create the graphics pipeline used in this example
     // Vulkan uses the concept of rendering pipelines to encapsulate fixed states, replacing OpenGL's complex state machine
@@ -243,7 +409,7 @@ void RenderAPI_VulkanNew::preparePipelines()
     // Set pipeline stage for this shader
     shaderStages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
     // Load binary SPIR-V shader
-//        shaderStages[1].module = loadSPIRVShader(getAssetPath() + "shaders/triangle/triangle.frag.spv");
+    //        shaderStages[1].module = loadSPIRVShader(getAssetPath() + "shaders/triangle/triangle.frag.spv");
     shaderStages[1].module = loadSPIRVShader(fragmentShaderSpirv, sizeof(fragmentShaderSpirv));
     // Main entry point for the shader
     shaderStages[1].pName = "main";
@@ -272,111 +438,7 @@ void RenderAPI_VulkanNew::preparePipelines()
     vkDestroyShaderModule(device, shaderStages[1].module, nullptr);
 }
 
-VkShaderModule RenderAPI_VulkanNew::loadSPIRVShader(std::string filename)
-{
-    size_t shaderSize;
-    char* shaderCode = NULL;
-
-    std::ifstream is(filename, std::ios::binary | std::ios::in | std::ios::ate);
-
-    if (is.is_open())
-    {
-        shaderSize = is.tellg();
-        is.seekg(0, std::ios::beg);
-        // Copy file contents into a buffer
-        shaderCode = new char[shaderSize];
-        is.read(shaderCode, shaderSize);
-        is.close();
-        assert(shaderSize > 0);
-    }
-
-    if (shaderCode)
-    {
-        // Create a new shader module that will be used for pipeline creation
-        VkShaderModuleCreateInfo moduleCreateInfo{};
-        moduleCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-        moduleCreateInfo.codeSize = shaderSize;
-        moduleCreateInfo.pCode = (uint32_t*)shaderCode;
-
-        VkShaderModule shaderModule;
-        VK_CHECK_RESULT(vkCreateShaderModule(device, &moduleCreateInfo, NULL, &shaderModule));
-
-        delete[] shaderCode;
-
-        return shaderModule;
-    }
-    else
-    {
-        std::cerr << "Error: Could not open shader file \"" << filename << "\"" << std::endl;
-        return VK_NULL_HANDLE;
-    }
-}
-
-VkShaderModule RenderAPI_VulkanNew::loadSPIRVShader(const uint32_t *pCode, size_t codeSize)
-{
-    VkShaderModuleCreateInfo moduleCreateInfo{};
-    moduleCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-    moduleCreateInfo.codeSize = codeSize;
-    moduleCreateInfo.pCode = pCode;
-
-    VkShaderModule shaderModule;
-    VK_CHECK_RESULT(vkCreateShaderModule(device, &moduleCreateInfo, NULL, &shaderModule));
-
-    return shaderModule;
-}
-
-//void RenderAPI_VulkanNew::mapExternalObjectToGraphicsSubSystem()
-//{
-//    vkGetPhysicalDeviceMemoryProperties(m_Instance.physicalDevice, &deviceMemoryProperties);
-
-//    device = m_Instance.device;
-
-//    XXUnityVulkanRecordingState recordingState;
-//    if (!m_UnityVulkan->CommandRecordingState(&recordingState, XXkUnityVulkanGraphicsQueueAccess_DontCare))
-//        return;
-
-//    // Unity does not destroy render passes, so this is safe regarding ABA-problem
-//    if (recordingState.renderPass != renderPass)
-//    {
-//        renderPass = recordingState.renderPass;
-//    }
-//}
-
-void RenderAPI_VulkanNew::prepareVertices()
-{
-    // Setup vertices
-    std::vector<Vertex> vertexBuffer =
-    {
-        { {  1.0f,  1.0f, 0.0f }, { 1.0f, 0.0f, 0.0f } },
-        { { -1.0f,  1.0f, 0.0f }, { 0.0f, 1.0f, 0.0f } },
-        { {  0.0f, -1.0f, 0.0f }, { 0.0f, 0.0f, 1.0f } }
-    };
-    uint32_t vertexBufferSize = static_cast<uint32_t>(vertexBuffer.size()) * sizeof(Vertex);
-
-    VkMemoryAllocateInfo memAlloc = {};
-    memAlloc.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    VkMemoryRequirements memReqs;
-
-    void *data;
-    VkBufferCreateInfo vertexBufferInfo = {};
-    vertexBufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    vertexBufferInfo.size = vertexBufferSize;
-    vertexBufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-
-    // Copy vertex data to a buffer visible to the host
-    VK_CHECK_RESULT(vkCreateBuffer(device, &vertexBufferInfo, nullptr, &vertices.buffer));
-    vkGetBufferMemoryRequirements(device, vertices.buffer, &memReqs);
-    memAlloc.allocationSize = memReqs.size;
-    // VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT is host visible memory, and VK_MEMORY_PROPERTY_HOST_COHERENT_BIT makes sure writes are directly visible
-    memAlloc.memoryTypeIndex = getMemoryTypeIndex(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-    VK_CHECK_RESULT(vkAllocateMemory(device, &memAlloc, nullptr, &vertices.memory));
-    VK_CHECK_RESULT(vkMapMemory(device, vertices.memory, 0, memAlloc.allocationSize, 0, &data));
-    memcpy(data, vertexBuffer.data(), vertexBufferSize);
-    vkUnmapMemory(device, vertices.memory);
-    VK_CHECK_RESULT(vkBindBufferMemory(device, vertices.buffer, vertices.memory, 0));
-}
-
-void RenderAPI_VulkanNew::paint(VkCommandBuffer commandBuffer)
+void VulkanExample::paint(VkCommandBuffer commandBuffer)
 {
     const VkDeviceSize offset = 0;
     vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vertices.buffer, &offset);
@@ -384,7 +446,8 @@ void RenderAPI_VulkanNew::paint(VkCommandBuffer commandBuffer)
     vkCmdDraw(commandBuffer, 3, 1, 0, 0);
 }
 
-void RenderAPI_VulkanNew::DrawTriangle()
+#ifdef UNITY_BUILD
+void VulkanExample::DrawTriangle()
 {
      // not needed, we already configured the event to be inside a render pass
      //   m_UnityVulkan->EnsureInsideRenderPass();
@@ -395,15 +458,19 @@ void RenderAPI_VulkanNew::DrawTriangle()
 
     paint(recordingState.commandBuffer);
 }
+#endif
 
-void RenderAPI_VulkanNew::prepare()
+void VulkanExample::prepare()
 {
 #ifdef UNITY_BUILD
     createPipelineCache(); // Pipeline cache object for unity
 #else
     VulkanExampleBase::prepare();
     prepareSynchronizationPrimitives();
+
+    prepareVertices();
+    preparePipelines();
+    buildCommandBuffers();
+    prepared = true;
 #endif
 }
-
-void RenderAPI_VulkanNew::render() {}

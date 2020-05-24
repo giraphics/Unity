@@ -107,32 +107,6 @@
 //UNITY_USED_VULKAN_API_FUNCTIONS(LOAD_VULKAN_FUNC);
 //}
 
-static VKAPI_ATTR void VKAPI_CALL Hook_vkCmdBeginRenderPass(VkCommandBuffer commandBuffer, const VkRenderPassBeginInfo* pRenderPassBegin, VkSubpassContents contents)
-{
-    // Change this to 'true' to override the clear color with green
-    const bool allowOverrideClearColor = true; // Parminder: changed to true
-    if (pRenderPassBegin->clearValueCount <= 16 && pRenderPassBegin->clearValueCount > 0 && allowOverrideClearColor)
-    {
-        VkClearValue clearValues[16] = {};
-        memcpy(clearValues, pRenderPassBegin->pClearValues, pRenderPassBegin->clearValueCount * sizeof(VkClearValue));
-
-        VkRenderPassBeginInfo patchedBeginInfo = *pRenderPassBegin;
-        patchedBeginInfo.pClearValues = clearValues;
-        for (unsigned int i = 0; i < pRenderPassBegin->clearValueCount - 1; ++i)
-        {
-            clearValues[i].color.float32[0] = 0.0f;
-            clearValues[i].color.float32[1] = 0.0f;
-            clearValues[i].color.float32[2] = 0.2f;
-            clearValues[i].color.float32[3] = 1.0f;
-        }
-        vkCmdBeginRenderPass(commandBuffer, &patchedBeginInfo, contents);
-    }
-    else
-    {
-        vkCmdBeginRenderPass(commandBuffer, pRenderPassBegin, contents);
-    }
-}
-
 static VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL Hook_vkGetInstanceProcAddr(VkInstance device, const char* funcName)
 {
     if (!funcName)
@@ -150,5 +124,33 @@ static VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL Hook_vkGetInstanceProcAddr(VkIns
 //    vkGetInstanceProcAddr = getInstanceProcAddr;
 //    return Hook_vkGetInstanceProcAddr;
 //}
+/////////////////////////////////////////////////////////////////
 
+
+static void LoadVulkanAPI(PFN_vkGetInstanceProcAddr getInstanceProcAddr, VkInstance instance)
+{
+//    if (!vkGetInstanceProcAddr && getInstanceProcAddr)
+//        vkGetInstanceProcAddr = getInstanceProcAddr;
+
+//    if (!vkCreateInstance)
+//        vkCreateInstance = (PFN_vkCreateInstance)vkGetInstanceProcAddr(VK_NULL_HANDLE, "vkCreateInstance");
+
+//UNITY_USED_VULKAN_API_FUNCTIONS(LOAD_VULKAN_FUNC);
+}
+
+static PFN_vkGetInstanceProcAddr UNITY_INTERFACE_API InterceptVulkanInitialization(PFN_vkGetInstanceProcAddr getInstanceProcAddr, void*)
+{
+    return vkGetInstanceProcAddr;// = getInstanceProcAddr;
+    //return Hook_vkGetInstanceProcAddr;
+}
+
+static VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateInstance(const VkInstanceCreateInfo* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkInstance* pInstance)
+{
+    //vkCreateInstance = (PFN_vkCreateInstance)vkGetInstanceProcAddr(VK_NULL_HANDLE, "vkCreateInstance");
+    VkResult result = vkCreateInstance(pCreateInfo, pAllocator, pInstance);
+    if (result == VK_SUCCESS)
+        LoadVulkanAPI(vkGetInstanceProcAddr, *pInstance);
+
+    return result;
+}
 #endif // #USE_VULKAN_HEADERS
