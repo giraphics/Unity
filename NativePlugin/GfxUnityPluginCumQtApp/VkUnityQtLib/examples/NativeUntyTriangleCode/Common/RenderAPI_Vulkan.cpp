@@ -3,11 +3,48 @@
 #include "../../VkUnityQtLib/data/shaders/triangle/triangleShaders.h"
 
 #ifdef UNITY_BUILD
-#include "VkQtUnityCommon.h"
+static PFN_vkGetInstanceProcAddr UNITY_INTERFACE_API InterceptVulkanInitialization(PFN_vkGetInstanceProcAddr getInstanceProcAddr, void*)
+{
+    return vkGetInstanceProcAddr;// = getInstanceProcAddr;
+    //return Hook_vkGetInstanceProcAddr;
+}
 
 extern "C" void RenderAPI_Vulkan_OnPluginLoad(IUnityInterfaces* interfaces)
 {
     interfaces->Get<IUnityGraphicsVulkan>()->InterceptInitialization(InterceptVulkanInitialization, NULL);
+}
+
+static void LoadVulkanAPI(PFN_vkGetInstanceProcAddr getInstanceProcAddr, VkInstance instance)
+{
+//    if (!vkGetInstanceProcAddr && getInstanceProcAddr)
+//        vkGetInstanceProcAddr = getInstanceProcAddr;
+
+//    if (!vkCreateInstance)
+//        vkCreateInstance = (PFN_vkCreateInstance)vkGetInstanceProcAddr(VK_NULL_HANDLE, "vkCreateInstance");
+
+//UNITY_USED_VULKAN_API_FUNCTIONS(LOAD_VULKAN_FUNC);
+}
+
+static VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateInstance(const VkInstanceCreateInfo* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkInstance* pInstance)
+{
+    //vkCreateInstance = (PFN_vkCreateInstance)vkGetInstanceProcAddr(VK_NULL_HANDLE, "vkCreateInstance");
+    VkResult result = vkCreateInstance(pCreateInfo, pAllocator, pInstance);
+    if (result == VK_SUCCESS)
+        LoadVulkanAPI(vkGetInstanceProcAddr, *pInstance);
+
+    return result;
+}
+
+static VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL Hook_vkGetInstanceProcAddr(VkInstance device, const char* funcName)
+{
+    if (!funcName)
+        return NULL;
+
+//#define INTERCEPT(fn) if (strcmp(funcName, #fn) == 0) return (PFN_vkVoidFunction)&Hook_##fn
+//    INTERCEPT(vkCreateInstance);
+//#undef INTERCEPT
+
+    return NULL;
 }
 #endif
 

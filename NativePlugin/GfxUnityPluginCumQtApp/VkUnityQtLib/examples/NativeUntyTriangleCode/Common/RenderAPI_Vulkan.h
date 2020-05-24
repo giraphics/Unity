@@ -1,9 +1,8 @@
 #pragma once
-//#include "RenderAPI.h"
 
 #include "../../Common/QtUIVulkanExample.h"
 
-class VulkanExample : /*public RenderAPI,*/ public QtUIVulkanExample
+class VulkanExample : public QtUIVulkanExample
 {
 public:
     struct Vertex {
