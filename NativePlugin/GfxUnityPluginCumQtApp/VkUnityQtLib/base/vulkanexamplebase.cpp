@@ -11,7 +11,6 @@
 #endif
 
 #include "vulkanexamplebase.h"
-#include "../examples/NativeUntyTriangleCode/VkQtUnityCommon2.h"
 std::vector<const char*> VulkanExampleBase::args;
 
 VkResult VulkanExampleBase::createInstance(bool enableValidation)

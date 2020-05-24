@@ -72,12 +72,14 @@ void RenderAPI_VulkanNew::ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnit
         /**********************************************************/
         /*            Graphics intialization goes here            */
         /**********************************************************/
-        vkGetPhysicalDeviceMemoryProperties(m_Instance.physicalDevice, &deviceMemoryProperties);
+        // 1. Map external GPU objects to our graphics sub-system
         mapUnityToQtVkObjects();
+
+        // Do the preperation
+        prepare();
 
         // Prepare the vertices
         prepareVertices();
-        createPipelineCache();
         preparePipelines();
         break;
 
@@ -269,13 +271,6 @@ void RenderAPI_VulkanNew::preparePipelines()
     vkDestroyShaderModule(device, shaderStages[1].module, nullptr);
 }
 
-void RenderAPI_VulkanNew::createPipelineCache()
-{
-    VkPipelineCacheCreateInfo pipelineCacheCreateInfo = {};
-    pipelineCacheCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
-    vkCreatePipelineCache(m_Instance.device, &pipelineCacheCreateInfo, nullptr, &pipelineCache);
-}
-
 VkShaderModule RenderAPI_VulkanNew::loadSPIRVShader(std::string filename)
 {
     size_t shaderSize;
@@ -331,6 +326,8 @@ VkShaderModule RenderAPI_VulkanNew::loadSPIRVShader(const uint32_t *pCode, size_
 
 void RenderAPI_VulkanNew::mapUnityToQtVkObjects()
 {
+    vkGetPhysicalDeviceMemoryProperties(m_Instance.physicalDevice, &deviceMemoryProperties);
+
     device = m_Instance.device;
 
     XXUnityVulkanRecordingState recordingState;
@@ -376,24 +373,6 @@ void RenderAPI_VulkanNew::prepareVertices()
     memcpy(data, vertexBuffer.data(), vertexBufferSize);
     vkUnmapMemory(device, vertices.memory);
     VK_CHECK_RESULT(vkBindBufferMemory(device, vertices.buffer, vertices.memory, 0));
-}
-
-uint32_t RenderAPI_VulkanNew::getMemoryTypeIndex(uint32_t typeBits, VkMemoryPropertyFlags properties)
-{
-    // Iterate over all memory types available for the device used in this example
-    for (uint32_t i = 0; i < deviceMemoryProperties.memoryTypeCount; i++)
-    {
-        if ((typeBits & 1) == 1)
-        {
-            if ((deviceMemoryProperties.memoryTypes[i].propertyFlags & properties) == properties)
-            {
-                return i;
-            }
-        }
-        typeBits >>= 1;
-    }
-
-    throw "Could not find a suitable memory type!";
 }
 
 void RenderAPI_VulkanNew::paint(VkCommandBuffer commandBuffer)

@@ -347,7 +347,11 @@ public:
 
     void prepare() override
     {
+#ifdef UNITY_BUILD
+        createPipelineCache(); // Pipeline cache object for unity
+#else
         VulkanExampleBase::prepare();
         prepareSynchronizationPrimitives();
+#endif
     }
 };
