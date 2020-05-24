@@ -360,7 +360,7 @@ public:
 
 	/** @brief (Virtual) Called when the UI overlay is updating, can be used to add custom elements to the overlay */
         //virtual void OnUpdateUIOverlay(vks::UIOverlay *overlay);
-    friend class QtUIVulkanExample;
+    friend class RenderAPI_VulkanNew;
 };
 
 // OS specific macros for the example main entry points
@@ -436,7 +436,6 @@ int main(const int argc, const char *argv[])													    \
 #elif defined(VK_USE_PLATFORM_XCB_KHR)
 #ifndef USE_QWINDOW
 #define VULKAN_EXAMPLE_MAIN()																		\
-VulkanExample *vulkanExample;																		\
 static void handleEvent(const xcb_generic_event_t *event)											\
 {																									\
 	if (vulkanExample != NULL)																		\

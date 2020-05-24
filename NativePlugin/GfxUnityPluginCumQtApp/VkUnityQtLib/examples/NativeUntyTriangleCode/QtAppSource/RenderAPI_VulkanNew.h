@@ -1,5 +1,5 @@
 #pragma once
-#include "QtUIVulkanExample.h"
+#include "../Common/QtUIVulkanExample.h"
 
 class VulkanExample : public QtUIVulkanExample
 {
@@ -26,8 +26,9 @@ public:
     void paint(VkCommandBuffer commandBuffer);
 
     void buildCommandBuffers();
-    virtual void render();
-    void prepare();
+    void render() override;
+    void prepare() override;
 
+private:
     VkPipeline pipeline;
 };

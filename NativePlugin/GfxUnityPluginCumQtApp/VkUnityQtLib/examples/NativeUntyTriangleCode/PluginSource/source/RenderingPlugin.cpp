@@ -69,9 +69,7 @@ static void UNITY_INTERFACE_API OnGraphicsDeviceEvent(UnityGfxDeviceEventType ev
 	{
 		assert(s_CurrentAPI == NULL);
 		s_DeviceType = s_Graphics->GetRenderer();
-//#ifndef USE_VULKAN_HEADERS
         s_CurrentAPI = CreateRenderAPI(s_DeviceType);
-//#endif
 	}
 
 	// Let the implementation process the device related events

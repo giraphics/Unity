@@ -2,46 +2,44 @@
 
 #include <cstring>
 
-//#define USE_VULKAN_HEADERS
-
 #ifdef USE_VULKAN_HEADERS
-#include "vulkan/vulkan.h"
-#include "Unity/IUnityGraphicsVulkan.h"
+//#include "vulkan/vulkan.h"
+//#include "Unity/IUnityGraphicsVulkan.h"
 
-static PFN_vkGetInstanceProcAddr UNITY_INTERFACE_API InterceptVulkanInitialization(PFN_vkGetInstanceProcAddr getInstanceProcAddr, void*)
-{
-    return &vkGetInstanceProcAddr;
-}
+//static PFN_vkGetInstanceProcAddr UNITY_INTERFACE_API InterceptVulkanInitialization(PFN_vkGetInstanceProcAddr getInstanceProcAddr, void*)
+//{
+//    return &vkGetInstanceProcAddr;
+//}
 
-static void LoadVulkanAPI(PFN_vkGetInstanceProcAddr getInstanceProcAddr, VkInstance instance)
-{
-}
+//static void LoadVulkanAPI(PFN_vkGetInstanceProcAddr getInstanceProcAddr, VkInstance instance)
+//{
+//}
 
-static VKAPI_ATTR void VKAPI_CALL Hook_vkCmdBeginRenderPass(VkCommandBuffer commandBuffer, const VkRenderPassBeginInfo* pRenderPassBegin, VkSubpassContents contents)
-{
-    // Change this to 'true' to override the clear color with green
-    const bool allowOverrideClearColor = true; // Parminder: changed to true
-    if (pRenderPassBegin->clearValueCount <= 16 && pRenderPassBegin->clearValueCount > 0 && allowOverrideClearColor)
-    {
-        VkClearValue clearValues[16] = {};
-        memcpy(clearValues, pRenderPassBegin->pClearValues, pRenderPassBegin->clearValueCount * sizeof(VkClearValue));
+//static VKAPI_ATTR void VKAPI_CALL Hook_vkCmdBeginRenderPass(VkCommandBuffer commandBuffer, const VkRenderPassBeginInfo* pRenderPassBegin, VkSubpassContents contents)
+//{
+//    // Change this to 'true' to override the clear color with green
+//    const bool allowOverrideClearColor = true; // Parminder: changed to true
+//    if (pRenderPassBegin->clearValueCount <= 16 && pRenderPassBegin->clearValueCount > 0 && allowOverrideClearColor)
+//    {
+//        VkClearValue clearValues[16] = {};
+//        memcpy(clearValues, pRenderPassBegin->pClearValues, pRenderPassBegin->clearValueCount * sizeof(VkClearValue));
 
-        VkRenderPassBeginInfo patchedBeginInfo = *pRenderPassBegin;
-        patchedBeginInfo.pClearValues = clearValues;
-        for (unsigned int i = 0; i < pRenderPassBegin->clearValueCount - 1; ++i)
-        {
-            clearValues[i].color.float32[0] = 0.0;
-            clearValues[i].color.float32[1] = 1.0;
-            clearValues[i].color.float32[2] = 1.0;
-            clearValues[i].color.float32[3] = 1.0;
-        }
-        vkCmdBeginRenderPass(commandBuffer, &patchedBeginInfo, contents);
-    }
-    else
-    {
-        vkCmdBeginRenderPass(commandBuffer, pRenderPassBegin, contents);
-    }
-}
+//        VkRenderPassBeginInfo patchedBeginInfo = *pRenderPassBegin;
+//        patchedBeginInfo.pClearValues = clearValues;
+//        for (unsigned int i = 0; i < pRenderPassBegin->clearValueCount - 1; ++i)
+//        {
+//            clearValues[i].color.float32[0] = 0.0;
+//            clearValues[i].color.float32[1] = 1.0;
+//            clearValues[i].color.float32[2] = 1.0;
+//            clearValues[i].color.float32[3] = 1.0;
+//        }
+//        vkCmdBeginRenderPass(commandBuffer, &patchedBeginInfo, contents);
+//    }
+//    else
+//    {
+//        vkCmdBeginRenderPass(commandBuffer, pRenderPassBegin, contents);
+//    }
+//}
 
 #else
 

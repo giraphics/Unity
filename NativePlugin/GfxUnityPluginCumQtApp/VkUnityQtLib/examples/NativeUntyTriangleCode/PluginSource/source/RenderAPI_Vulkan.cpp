@@ -42,6 +42,7 @@ extern "C" void RenderAPI_Vulkan_OnPluginLoad(IUnityInterfaces* interfaces)
 }
 
 RenderAPI_VulkanNew::RenderAPI_VulkanNew()
+    : QtUIVulkanExample()
 {
 }
 
@@ -73,7 +74,7 @@ void RenderAPI_VulkanNew::ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnit
         /*            Graphics intialization goes here            */
         /**********************************************************/
         // 1. Map external GPU objects to our graphics sub-system
-        mapUnityToQtVkObjects();
+        mapExternalObjectToGraphicsSubSystem();
 
         // Do the preperation
         prepare();
@@ -324,22 +325,22 @@ VkShaderModule RenderAPI_VulkanNew::loadSPIRVShader(const uint32_t *pCode, size_
     return shaderModule;
 }
 
-void RenderAPI_VulkanNew::mapUnityToQtVkObjects()
-{
-    vkGetPhysicalDeviceMemoryProperties(m_Instance.physicalDevice, &deviceMemoryProperties);
+//void RenderAPI_VulkanNew::mapExternalObjectToGraphicsSubSystem()
+//{
+//    vkGetPhysicalDeviceMemoryProperties(m_Instance.physicalDevice, &deviceMemoryProperties);
 
-    device = m_Instance.device;
+//    device = m_Instance.device;
 
-    XXUnityVulkanRecordingState recordingState;
-    if (!m_UnityVulkan->CommandRecordingState(&recordingState, XXkUnityVulkanGraphicsQueueAccess_DontCare))
-        return;
+//    XXUnityVulkanRecordingState recordingState;
+//    if (!m_UnityVulkan->CommandRecordingState(&recordingState, XXkUnityVulkanGraphicsQueueAccess_DontCare))
+//        return;
 
-    // Unity does not destroy render passes, so this is safe regarding ABA-problem
-    if (recordingState.renderPass != renderPass)
-    {
-        renderPass = recordingState.renderPass;
-    }
-}
+//    // Unity does not destroy render passes, so this is safe regarding ABA-problem
+//    if (recordingState.renderPass != renderPass)
+//    {
+//        renderPass = recordingState.renderPass;
+//    }
+//}
 
 void RenderAPI_VulkanNew::prepareVertices()
 {
@@ -394,3 +395,15 @@ void RenderAPI_VulkanNew::DrawTriangle()
 
     paint(recordingState.commandBuffer);
 }
+
+void RenderAPI_VulkanNew::prepare()
+{
+#ifdef UNITY_BUILD
+    createPipelineCache(); // Pipeline cache object for unity
+#else
+    VulkanExampleBase::prepare();
+    prepareSynchronizationPrimitives();
+#endif
+}
+
+void RenderAPI_VulkanNew::render() {}

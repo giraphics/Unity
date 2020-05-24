@@ -1,4 +1,4 @@
-#include "../NativeUntyTriangleCode/RenderAPI_VulkanNew.h"
+#include "RenderAPI_VulkanNew.h"
 #include "vulkanexamplebase.h"
 
 VulkanExample *vulkanExample;

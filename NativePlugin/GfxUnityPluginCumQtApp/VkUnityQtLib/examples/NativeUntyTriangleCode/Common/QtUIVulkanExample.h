@@ -1,18 +1,5 @@
 #pragma once
 
-/*
-* Vulkan Example - Basic indexed triangle rendering
-*
-* Note:
-*	This is a "pedal to the metal" example to show off how to get Vulkan up an displaying something
-*	Contrary to the other examples, this one won't make use of helper functions or initializers
-*	Except in a few cases (swap chain setup e.g.)
-*
-* Copyright (C) 2016-2017 by Sascha Willems - www.saschawillems.de
-*
-* This code is licensed under the MIT license (MIT) (http://opensource.org/licenses/MIT)
-*/
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -30,6 +17,9 @@
 #include "vulkanexamplebase.h"
 
 #include "../../data/shaders/triangle/triangleShaders.h"
+#ifdef UNITY_BUILD
+#include "Unity/IUnityGraphicsVulkan.h"
+#endif
 
 // Set to "true" to enable Vulkan's validation layers (see vulkandebug.cpp for details)
 #define ENABLE_VALIDATION false
@@ -345,13 +335,30 @@ public:
         // updateUniformBuffers(); // Update Projection and View
     }
 
-    void prepare() override
+    virtual void mapExternalObjectToGraphicsSubSystem()
     {
 #ifdef UNITY_BUILD
-        createPipelineCache(); // Pipeline cache object for unity
+        vkGetPhysicalDeviceMemoryProperties(m_Instance.physicalDevice, &deviceMemoryProperties);
+
+        device = m_Instance.device;
+
+        XXUnityVulkanRecordingState recordingState;
+        if (!m_UnityVulkan->CommandRecordingState(&recordingState, XXkUnityVulkanGraphicsQueueAccess_DontCare))
+            return;
+
+        // Unity does not destroy render passes, so this is safe regarding ABA-problem
+        if (recordingState.renderPass != renderPass)
+        {
+            renderPass = recordingState.renderPass;
+        }
 #else
-        VulkanExampleBase::prepare();
-        prepareSynchronizationPrimitives();
+        // Todo: Non-Unity Gfx mapping
 #endif
     }
+
+//protected:
+#ifdef UNITY_BUILD
+    IUnityGraphicsVulkan* m_UnityVulkan = NULL;
+    XXUnityVulkanInstance m_Instance;
+#endif
 };

@@ -110,57 +110,25 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-switch-enum")
 endif()
 
-
 add_definitions(-D_CRT_SECURE_NO_WARNINGS)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
-# Define directories and the contained folder and files inside.
-if(WIN32)
-    source_group("include" REGULAR_EXPRESSION "include/*.h")
-    source_group("source" REGULAR_EXPRESSION "source/*.cpp")
-endif(WIN32)
+file(GLOB_RECURSE COMMON_BASE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/base/*.*)
+file(GLOB_RECURSE UNITY_SOURCE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/examples/NativeUntyTriangleCode/PluginSource/source/*.*)
+file(GLOB_RECURSE QT_UNITY_COMMON ${CMAKE_CURRENT_SOURCE_DIR}/examples/NativeUntyTriangleCode/Common/*.*)
 
-# Gather list of header and source files for compilation
-#file(GLOB_RECURSE SOURCE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/examples/triangle/*.*)
-file(GLOB_RECURSE SOURCE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/examples/NativeUntyTriangleCode/Unity/*.*)
-#file(GLOB_RECURSE SOURCE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/examples/dynamicuniformbuffer/*.*)
-file(GLOB_RECURSE SOURCE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/examples/NativeUntyTriangleCode/*.*)
-
-file(GLOB_RECURSE COMMON_FILES ${CMAKE_CURRENT_SOURCE_DIR}/base/*.*)
-file(GLOB_RECURSE MAIN_FILE ${CMAKE_CURRENT_SOURCE_DIR}/examples/main/*.*)
-
-# Build project, give it a name and includes list of file to be compiled
-add_library(${Unity_Plugin_Lib} SHARED ${SOURCE_FILES} ${COMMON_FILES} ${RESOURCE_FILES})
+add_library(${Unity_Plugin_Lib} SHARED ${COMMON_BASE_FILES} ${RESOURCE_FILES}  ${UNITY_SOURCE_FILES} ${QT_UNITY_COMMON})
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}external)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/base)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/examples/NativeUntyTriangleCode/PluginSource/source)
 
 # Link the debug and release libraries to the project
-IF(WIN32)
-	# Nothing here (yet)
-ELSE(WIN32)
-	#link_libraries(${XCB_LIBRARIES} ${Vulkan_LIBRARY})
-        target_link_libraries( ${Unity_Plugin_Lib} ${XCB_LIBRARIES} ${Vulkan_LIBRARY})
-ENDIF(WIN32)
-
-# Define C++ version to be used for building the project
-#set_property(TARGET ${Unity_Plugin_Lib} PROPERTY CXX_STANDARD 11)
-#set_property(TARGET ${Unity_Plugin_Lib} PROPERTY CXX_STANDARD_REQUIRED ON)
-
-# Define C version to be used for building the project
-#set_property(TARGET ${Unity_Plugin_Lib} PROPERTY C_STANDARD 99)
-#set_property(TARGET ${Unity_Plugin_Lib} PROPERTY C_STANDARD_REQUIRED ON)
+target_link_libraries( ${Unity_Plugin_Lib} ${XCB_LIBRARIES} ${Vulkan_LIBRARY})
 
 qt5_use_modules(${Unity_Plugin_Lib} Widgets X11Extras)
 
-add_definitions(-DUSE_QWINDOW)
-#add_definitions(-DUSE_VULKAN_HEADERS)
-#target_compile_definitions(${Unity_Plugin_Lib} -DUSE_VULKAN_HEADERS)
 target_compile_definitions(${Unity_Plugin_Lib} PRIVATE UNITY_BUILD)
-#add_definitions(-DUNITY_BUILD)
-#add_definitions(-DUSE_QTUNITY_COMMON_INTERFACE)
-
 
 ############################################################
 # Create an executable
@@ -168,17 +136,11 @@ target_compile_definitions(${Unity_Plugin_Lib} PRIVATE UNITY_BUILD)
 
 set(Qt_Binary "QtBinaryApp")
 
-set(Main_Src "RenderingPlugin")
-
 # Add an executable with the above sources
-add_executable(${Qt_Binary} ${SOURCE_FILES} ${COMMON_FILES} ${RESOURCE_FILES}  ${MAIN_FILE})
+file(GLOB_RECURSE QT_SRC_FILES ${CMAKE_CURRENT_SOURCE_DIR}/examples/NativeUntyTriangleCode/QtAppSource/*.*)
+add_executable(${Qt_Binary} ${QT_SRC_FILES} ${COMMON_BASE_FILES} ${RESOURCE_FILES} ${QT_UNITY_COMMON})
 
-IF(WIN32)
-        # Nothing here (yet)
-ELSE(WIN32)
-        #link_libraries(${XCB_LIBRARIES} ${Vulkan_LIBRARY})
-        target_link_libraries( ${Qt_Binary} ${XCB_LIBRARIES} ${Vulkan_LIBRARY})
-ENDIF(WIN32)
+target_link_libraries(${Qt_Binary} ${XCB_LIBRARIES} ${Vulkan_LIBRARY})
 
 # Define project properties
 set_property(TARGET ${Qt_Binary} PROPERTY RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/binaries)
@@ -188,3 +150,5 @@ set_property(TARGET ${Qt_Binary} PROPERTY RUNTIME_OUTPUT_DIRECTORY_MINSIZEREL ${
 set_property(TARGET ${Qt_Binary} PROPERTY RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO ${CMAKE_CURRENT_SOURCE_DIR}/binaries)
 
 qt5_use_modules(${Qt_Binary} Widgets X11Extras)
+
+target_compile_definitions(${Qt_Binary} PRIVATE USE_QWINDOW)

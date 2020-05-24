@@ -1,6 +1,7 @@
 #include "RenderAPI_VulkanNew.h"
 
-VulkanExample::VulkanExample() : QtUIVulkanExample()
+VulkanExample::VulkanExample()
+    : QtUIVulkanExample()
 {
     title = "Test Triangle";
     camera.type = Camera::CameraType::lookat;
@@ -347,7 +348,8 @@ void VulkanExample::preparePipelines()
 
 void VulkanExample::prepare()
 {
-    QtUIVulkanExample::prepare();
+    VulkanExampleBase::prepare();
+    prepareSynchronizationPrimitives();
 
     prepareVertices();
     preparePipelines();
