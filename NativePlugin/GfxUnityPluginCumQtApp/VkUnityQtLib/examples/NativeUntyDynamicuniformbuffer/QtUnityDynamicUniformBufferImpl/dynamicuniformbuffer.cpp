@@ -331,6 +331,11 @@ void VulkanExample::viewChanged()
 
 void VulkanExample::paint(VkCommandBuffer commandBuffer)
 {
+//    const VkDeviceSize offset = 0;
+//    vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vertexBuffer.buffer, &offset);
+//    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+//    vkCmdDraw(commandBuffer, 3, 1, 0, 0);
+//return;
     vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
     VkDeviceSize offsets[1] = { 0 };

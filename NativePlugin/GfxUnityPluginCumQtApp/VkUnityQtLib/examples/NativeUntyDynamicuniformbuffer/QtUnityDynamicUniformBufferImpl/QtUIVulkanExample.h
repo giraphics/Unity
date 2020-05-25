@@ -22,7 +22,7 @@
 #include "../PluginSource/source/Unity/IUnityGraphics.h"
 
 // Set to "true" to enable Vulkan's validation layers (see vulkandebug.cpp for details)
-#define ENABLE_VALIDATION false
+#define ENABLE_VALIDATION true
 class QtUIVulkanExample : public VulkanExampleBase
 {
 public:
