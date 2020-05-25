@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../Common/QtUIVulkanExample.h"
+#include "../../QtUnityTriangleImpl/QtUIVulkanExample.h"
 
 class VulkanExample : public QtUIVulkanExample
 {

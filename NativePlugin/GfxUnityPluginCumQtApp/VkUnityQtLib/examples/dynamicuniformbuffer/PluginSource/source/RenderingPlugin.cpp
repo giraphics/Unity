@@ -1,4 +1,4 @@
-#include "../../QtUnityTriangleImpl/qtUnityTriangle.h"
+#include "../../Common/qtUnityTriangle.h"
 
 #include <assert.h>
 #include <math.h>

@@ -116,9 +116,12 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
 file(GLOB_RECURSE COMMON_BASE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/base/*.*)
 file(GLOB_RECURSE UNITY_SOURCE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/examples/NativeUntyTriangleCode/PluginSource/source/*.*)
-file(GLOB_RECURSE QT_UNITY_COMMON ${CMAKE_CURRENT_SOURCE_DIR}/examples/NativeUntyTriangleCode/Common/*.*)
-
+file(GLOB_RECURSE QT_UNITY_COMMON ${CMAKE_CURRENT_SOURCE_DIR}/examples/NativeUntyTriangleCode/QtUnityTriangleImpl/*.*)
 add_library(${Unity_Plugin_Lib} SHARED ${COMMON_BASE_FILES} ${RESOURCE_FILES}  ${UNITY_SOURCE_FILES} ${QT_UNITY_COMMON})
+
+#file(GLOB_RECURSE UNITY_SOURCE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/examples/dynamicuniformbuffer/PluginSource/source/*.*)
+#file(GLOB_RECURSE QT_UNITY_COMMON ${CMAKE_CURRENT_SOURCE_DIR}/examples/dynamicuniformbuffer/Common/*.*)
+#add_library(${Unity_Plugin_Lib} SHARED ${COMMON_BASE_FILES} ${RESOURCE_FILES}  ${UNITY_SOURCE_FILES} ${QT_UNITY_COMMON})
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}external)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/base)

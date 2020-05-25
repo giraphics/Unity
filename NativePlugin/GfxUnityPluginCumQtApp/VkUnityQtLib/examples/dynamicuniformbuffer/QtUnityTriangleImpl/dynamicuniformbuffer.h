@@ -96,6 +96,7 @@ public:
 
     void updateDynamicUniformBuffer(bool force = false);
 
+    void paint(VkCommandBuffer commandBuffer);
     void prepare();
 
     virtual void render();

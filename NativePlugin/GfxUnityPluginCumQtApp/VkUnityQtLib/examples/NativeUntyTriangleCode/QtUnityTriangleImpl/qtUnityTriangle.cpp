@@ -306,23 +306,6 @@ void VulkanExample::paint(VkCommandBuffer commandBuffer)
     vkCmdDraw(commandBuffer, 3, 1, 0, 0);
 }
 
-void VulkanExample::render()
-{
-    if (!prepared)
-        return;
-
-#ifdef UNITY_BUILD
-    XXUnityVulkanRecordingState recordingState;
-    if ((pipeline == VK_NULL_HANDLE) || !m_UnityVulkan->CommandRecordingState(&recordingState, XXkUnityVulkanGraphicsQueueAccess_DontCare))
-        return;
-
-    paint(recordingState.commandBuffer);
-#else
-    buildCommandBuffers();
-    draw(); // Swapchain scheduled for presentation
-#endif
-}
-
 void VulkanExample::prepare()
 {
 #ifdef UNITY_BUILD
@@ -470,3 +453,20 @@ void VulkanExample::handleUnityGfxDeviceEventInitialize(IUnityInterfaces* interf
     preparePipelines();
 }
 #endif
+
+void VulkanExample::render()
+{
+    if (!prepared)
+        return;
+
+#ifdef UNITY_BUILD
+    XXUnityVulkanRecordingState recordingState;
+    if ((pipeline == VK_NULL_HANDLE) || !m_UnityVulkan->CommandRecordingState(&recordingState, XXkUnityVulkanGraphicsQueueAccess_DontCare))
+        return;
+
+    paint(recordingState.commandBuffer);
+#else
+    buildCommandBuffers();
+    draw(); // Swapchain scheduled for presentation
+#endif
+}
