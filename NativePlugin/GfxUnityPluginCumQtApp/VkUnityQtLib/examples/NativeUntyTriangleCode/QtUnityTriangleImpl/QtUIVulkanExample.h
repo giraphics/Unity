@@ -356,9 +356,10 @@ public:
 #endif
     }
 
-#ifdef UNITY_BUILD
     virtual void ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityInterfaces* interfaces) {}
+    virtual void DrawTriangle() {}
 
+#ifdef UNITY_BUILD
     IUnityGraphicsVulkan* m_UnityVulkan = NULL;
     XXUnityVulkanInstance m_Instance;
 #endif

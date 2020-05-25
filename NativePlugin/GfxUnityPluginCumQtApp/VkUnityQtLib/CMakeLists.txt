@@ -1,7 +1,8 @@
 cmake_minimum_required(VERSION 3.7.1)
 
-set(Unity_Plugin_Lib "RenderingPlugin")
 set(Project_Name "GfxUnityQtLib")
+set(Unity_Plugin_Lib "AptiviewUnityPlugin")
+set(Qt_Binary "QtBinaryApp")
 
 set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 set(CMAKE_INCLUDE_CURRENT_DIR ON) # 
@@ -134,11 +135,13 @@ target_compile_definitions(${Unity_Plugin_Lib} PRIVATE UNITY_BUILD)
 # Create an executable
 ############################################################
 
-set(Qt_Binary "QtBinaryApp")
-
 # Add an executable with the above sources
 file(GLOB_RECURSE QT_SRC_FILES ${CMAKE_CURRENT_SOURCE_DIR}/examples/NativeUntyTriangleCode/QtAppSource/*.*)
 add_executable(${Qt_Binary} ${QT_SRC_FILES} ${COMMON_BASE_FILES} ${RESOURCE_FILES} ${QT_UNITY_COMMON})
+
+#file(GLOB_RECURSE QT_SRC_FILES ${CMAKE_CURRENT_SOURCE_DIR}/examples/triangle/*.*)
+#file(GLOB_RECURSE QT_SRC_FILES ${CMAKE_CURRENT_SOURCE_DIR}/examples/dynamicuniformbuffer/*.*)
+#add_executable(${Qt_Binary} ${QT_SRC_FILES} ${COMMON_BASE_FILES} ${RESOURCE_FILES})
 
 target_link_libraries(${Qt_Binary} ${XCB_LIBRARIES} ${Vulkan_LIBRARY})
 

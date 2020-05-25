@@ -1,4 +1,4 @@
-#include "../../Common/RenderAPI_Vulkan.h"
+#include "../../Common/qtUnityTriangle.h"
 
 #include <assert.h>
 #include <math.h>
@@ -26,12 +26,6 @@ extern "C" void	UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API UnityPluginLoad(IUnit
 	s_Graphics = s_UnityInterfaces->Get<IUnityGraphics>();
 	s_Graphics->RegisterDeviceEventCallback(OnGraphicsDeviceEvent);
 	
-	if (s_Graphics->GetRenderer() == kUnityGfxRendererNull)
-	{
-		extern void RenderAPI_Vulkan_OnPluginLoad(IUnityInterfaces*);
-		RenderAPI_Vulkan_OnPluginLoad(unityInterfaces);
-	}
-
 	// Run OnGraphicsDeviceEvent(initialize) manually on plugin load
 	OnGraphicsDeviceEvent(kUnityGfxDeviceEventInitialize);
 }
@@ -68,12 +62,10 @@ static void UNITY_INTERFACE_API OnGraphicsDeviceEvent(UnityGfxDeviceEventType ev
 	{
 		assert(s_CurrentAPI == NULL);
 		s_DeviceType = s_Graphics->GetRenderer();
-//        s_CurrentAPI = CreateRenderAPI(s_DeviceType);
         if (s_DeviceType == kUnityGfxRendererVulkan)
         {
             s_CurrentAPI = new VulkanExample();
         }
-
 	}
 
 	// Let the implementation process the device related events
@@ -91,18 +83,9 @@ static void UNITY_INTERFACE_API OnGraphicsDeviceEvent(UnityGfxDeviceEventType ev
 	}
 }
 
-
-
-// --------------------------------------------------------------------------
-// OnRenderEvent
-// This will be called for GL.IssuePluginEvent script calls; eventID will
-// be the integer passed to IssuePluginEvent. In this example, we just ignore
-// that value.
-
-
-static void DrawColoredTriangle()
+static void AptiviewRender()
 {
-    s_CurrentAPI->DrawTriangle();
+    s_CurrentAPI->render();
 }
 
 static void UNITY_INTERFACE_API OnRenderEvent(int eventID)
@@ -111,7 +94,7 @@ static void UNITY_INTERFACE_API OnRenderEvent(int eventID)
 	if (s_CurrentAPI == NULL)
 		return;
 
-	DrawColoredTriangle();
+    AptiviewRender();
 }
 
 

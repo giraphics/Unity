@@ -1,13 +1,14 @@
 #pragma once
 
-#include <QWidget>
-#include <QWindow>
+#include <QTimer>
 
 #define USE_WINDOW
 #ifdef USE_WINDOW
 class VulkanExampleBase;
+#include <QWindow>
 class Window : public QWindow
 #else
+#include <QWidget>
 class Window : public QWidget
 #endif
 {

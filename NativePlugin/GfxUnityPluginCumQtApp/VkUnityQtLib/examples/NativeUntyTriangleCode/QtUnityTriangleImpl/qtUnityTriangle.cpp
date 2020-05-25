@@ -1,52 +1,6 @@
-#include "RenderAPI_Vulkan.h"
+#include "qtUnityTriangle.h"
 
 #include "../../VkUnityQtLib/data/shaders/triangle/triangleShaders.h"
-
-#ifdef UNITY_BUILD
-static PFN_vkGetInstanceProcAddr UNITY_INTERFACE_API InterceptVulkanInitialization(PFN_vkGetInstanceProcAddr getInstanceProcAddr, void*)
-{
-    return vkGetInstanceProcAddr;// = getInstanceProcAddr;
-    //return Hook_vkGetInstanceProcAddr;
-}
-
-extern "C" void RenderAPI_Vulkan_OnPluginLoad(IUnityInterfaces* interfaces)
-{
-    interfaces->Get<IUnityGraphicsVulkan>()->InterceptInitialization(InterceptVulkanInitialization, NULL);
-}
-
-static void LoadVulkanAPI(PFN_vkGetInstanceProcAddr getInstanceProcAddr, VkInstance instance)
-{
-//    if (!vkGetInstanceProcAddr && getInstanceProcAddr)
-//        vkGetInstanceProcAddr = getInstanceProcAddr;
-
-//    if (!vkCreateInstance)
-//        vkCreateInstance = (PFN_vkCreateInstance)vkGetInstanceProcAddr(VK_NULL_HANDLE, "vkCreateInstance");
-
-//UNITY_USED_VULKAN_API_FUNCTIONS(LOAD_VULKAN_FUNC);
-}
-
-static VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateInstance(const VkInstanceCreateInfo* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkInstance* pInstance)
-{
-    //vkCreateInstance = (PFN_vkCreateInstance)vkGetInstanceProcAddr(VK_NULL_HANDLE, "vkCreateInstance");
-    VkResult result = vkCreateInstance(pCreateInfo, pAllocator, pInstance);
-    if (result == VK_SUCCESS)
-        LoadVulkanAPI(vkGetInstanceProcAddr, *pInstance);
-
-    return result;
-}
-
-static VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL Hook_vkGetInstanceProcAddr(VkInstance device, const char* funcName)
-{
-    if (!funcName)
-        return NULL;
-
-//#define INTERCEPT(fn) if (strcmp(funcName, #fn) == 0) return (PFN_vkVoidFunction)&Hook_##fn
-//    INTERCEPT(vkCreateInstance);
-//#undef INTERCEPT
-
-    return NULL;
-}
-#endif
 
 static VKAPI_ATTR void VKAPI_CALL Hook_vkCmdBeginRenderPass(VkCommandBuffer commandBuffer, const VkRenderPassBeginInfo* pRenderPassBegin, VkSubpassContents contents)
 {
@@ -61,8 +15,8 @@ static VKAPI_ATTR void VKAPI_CALL Hook_vkCmdBeginRenderPass(VkCommandBuffer comm
         patchedBeginInfo.pClearValues = clearValues;
         for (unsigned int i = 0; i < pRenderPassBegin->clearValueCount - 1; ++i)
         {
-            clearValues[i].color.float32[0] = 1.0f;
-            clearValues[i].color.float32[1] = 1.0f;
+            clearValues[i].color.float32[0] = 0.0f;
+            clearValues[i].color.float32[1] = 0.0f;
             clearValues[i].color.float32[2] = 0.2f;
             clearValues[i].color.float32[3] = 1.0f;
         }
@@ -91,144 +45,13 @@ VulkanExample::~VulkanExample()
     vkFreeMemory(device, vertices.memory, nullptr);
 }
 
-#ifndef UNITY_BUILD
-void VulkanExample::buildCommandBuffers()
-{
-    VkCommandBufferBeginInfo cmdBufInfo = {};
-    cmdBufInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    cmdBufInfo.pNext = nullptr;
-
-    // Set clear values for all framebuffer attachments with loadOp set to clear
-    // We use two attachments (color and depth) that are cleared at the start of the subpass and as such we need to set clear values for both
-    VkClearValue clearValues[2];
-    clearValues[0].color = { { 0.0f, 0.0f, 0.2f, 1.0f } };
-    clearValues[1].depthStencil = { 1.0f, 0 };
-
-    VkRenderPassBeginInfo renderPassBeginInfo = {};
-    renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    renderPassBeginInfo.pNext = nullptr;
-    renderPassBeginInfo.renderPass = renderPass;
-    renderPassBeginInfo.renderArea.offset.x = 0;
-    renderPassBeginInfo.renderArea.offset.y = 0;
-    renderPassBeginInfo.renderArea.extent.width = width;
-    renderPassBeginInfo.renderArea.extent.height = height;
-    renderPassBeginInfo.clearValueCount = 2;
-    renderPassBeginInfo.pClearValues = clearValues;
-
-    for (int32_t i = 0; i < drawCmdBuffers.size(); ++i)
-    {
-        // Set target frame buffer
-        renderPassBeginInfo.framebuffer = frameBuffers[i];
-
-        VK_CHECK_RESULT(vkBeginCommandBuffer(drawCmdBuffers[i], &cmdBufInfo));
-
-        // Start the first sub pass specified in our default render pass setup by the base class
-        // This will clear the color and depth attachment
-        //vkCmdBeginRenderPass(drawCmdBuffers[i], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
-        Hook_vkCmdBeginRenderPass(drawCmdBuffers[i], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
-        // Update dynamic viewport state
-        VkViewport viewport = {};
-        viewport.height = (float)height;
-        viewport.width = (float)width;
-        viewport.minDepth = (float) 0.0f;
-        viewport.maxDepth = (float) 1.0f;
-        vkCmdSetViewport(drawCmdBuffers[i], 0, 1, &viewport);
-
-        // Update dynamic scissor state
-        VkRect2D scissor = {};
-        scissor.extent.width = width;
-        scissor.extent.height = height;
-        scissor.offset.x = 0;
-        scissor.offset.y = 0;
-        vkCmdSetScissor(drawCmdBuffers[i], 0, 1, &scissor);
-
-        paint(drawCmdBuffers[i]);
-
-        vkCmdEndRenderPass(drawCmdBuffers[i]);
-
-        // Ending the render pass will add an implicit barrier transitioning the frame buffer color attachment to
-        // VK_IMAGE_LAYOUT_PRESENT_SRC_KHR for presenting it to the windowing system
-
-        VK_CHECK_RESULT(vkEndCommandBuffer(drawCmdBuffers[i]));
-    }
-}
-#endif
-
-#ifdef UNITY_BUILD
-void VulkanExample::ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityInterfaces* interfaces)
-{
-    switch (type)
-    {
-    case kUnityGfxDeviceEventInitialize:
-        m_UnityVulkan = interfaces->Get<IUnityGraphicsVulkan>();
-        m_Instance = m_UnityVulkan->Instance();
-
-        // Make sure Vulkan API functions are loaded
-        //LoadVulkanAPI(m_Instance.getInstanceProcAddr, m_Instance.instance);
-
-        XXUnityVulkanPluginEventConfig config_1;
-        config_1.graphicsQueueAccess = XXkUnityVulkanGraphicsQueueAccess_DontCare;
-        config_1.renderPassPrecondition = XXkUnityVulkanRenderPass_EnsureInside;
-        config_1.flags = XXkUnityVulkanEventConfigFlag_EnsurePreviousFrameSubmission | XXkUnityVulkanEventConfigFlag_ModifiesCommandBuffersState;
-        m_UnityVulkan->ConfigureEvent(1, &config_1);
-
-        // alternative way to intercept API
-        m_UnityVulkan->InterceptVulkanAPI("vkCmdBeginRenderPass", (PFN_vkVoidFunction)Hook_vkCmdBeginRenderPass);
-
-        /**********************************************************/
-        /*            Graphics intialization goes here            */
-        /**********************************************************/
-        // 1. Map external GPU objects to our graphics sub-system
-        mapExternalObjectToGraphicsSubSystem();
-
-        // Do the preperation
-        prepare();
-
-        // Prepare the vertices
-        prepareVertices();
-        preparePipelines();
-        break;
-
-    case kUnityGfxDeviceEventShutdown:
-
-        if (m_Instance.device != VK_NULL_HANDLE)
-        {
-            //GarbageCollect(true);
-            if (pipeline != VK_NULL_HANDLE)
-            {
-                vkDestroyPipeline(m_Instance.device, pipeline, NULL);
-                pipeline = VK_NULL_HANDLE;
-            }
-
-            vkDestroyBuffer(m_Instance.device, vertices.buffer, NULL);
-        }
-
-        m_UnityVulkan = NULL;
-        renderPass = VK_NULL_HANDLE;
-        m_Instance = XXUnityVulkanInstance();
-
-        break;
-    }
-}
-#endif
-
-void VulkanExample::render()
-{
-#ifdef UNITY_BUILD
-#else
-    if (!prepared)
-        return;
-    draw();
-#endif
-}
-
 void VulkanExample::prepareVertices()
 {
     // Setup vertices
     std::vector<Vertex> vertexBuffer =
     {
         { {  1.0f,  1.0f, 0.0f }, { 1.0f, 0.0f, 0.0f } },
-        { { -1.0f,  1.0f, 0.0f }, { 0.0f, 1.0f, 0.0f } },
+        { { -1.0f,  1.0f, 0.0f }, { 1.0f, 0.0f, 0.0f } },
         { {  0.0f, -1.0f, 0.0f }, { 0.0f, 0.0f, 1.0f } }
     };
     uint32_t vertexBufferSize = static_cast<uint32_t>(vertexBuffer.size()) * sizeof(Vertex);
@@ -483,19 +306,22 @@ void VulkanExample::paint(VkCommandBuffer commandBuffer)
     vkCmdDraw(commandBuffer, 3, 1, 0, 0);
 }
 
-#ifdef UNITY_BUILD
-void VulkanExample::DrawTriangle()
+void VulkanExample::render()
 {
-     // not needed, we already configured the event to be inside a render pass
-     //   m_UnityVulkan->EnsureInsideRenderPass();
+    if (!prepared)
+        return;
 
+#ifdef UNITY_BUILD
     XXUnityVulkanRecordingState recordingState;
     if ((pipeline == VK_NULL_HANDLE) || !m_UnityVulkan->CommandRecordingState(&recordingState, XXkUnityVulkanGraphicsQueueAccess_DontCare))
         return;
 
     paint(recordingState.commandBuffer);
-}
+#else
+    buildCommandBuffers();
+    draw(); // Swapchain scheduled for presentation
 #endif
+}
 
 void VulkanExample::prepare()
 {
@@ -508,6 +334,139 @@ void VulkanExample::prepare()
     prepareVertices();
     preparePipelines();
     buildCommandBuffers();
-    prepared = true;
 #endif
+    prepared = true;
 }
+
+void VulkanExample::buildCommandBuffers()
+{
+    VkCommandBufferBeginInfo cmdBufInfo = {};
+    cmdBufInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    cmdBufInfo.pNext = nullptr;
+
+    // Set clear values for all framebuffer attachments with loadOp set to clear
+    // We use two attachments (color and depth) that are cleared at the start of the subpass and as such we need to set clear values for both
+    VkClearValue clearValues[2];
+    clearValues[0].color = { { 0.0f, 0.0f, 0.2f, 1.0f } };
+    clearValues[1].depthStencil = { 1.0f, 0 };
+
+    VkRenderPassBeginInfo renderPassBeginInfo = {};
+    renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    renderPassBeginInfo.pNext = nullptr;
+    renderPassBeginInfo.renderPass = renderPass;
+    renderPassBeginInfo.renderArea.offset.x = 0;
+    renderPassBeginInfo.renderArea.offset.y = 0;
+    renderPassBeginInfo.renderArea.extent.width = width;
+    renderPassBeginInfo.renderArea.extent.height = height;
+    renderPassBeginInfo.clearValueCount = 2;
+    renderPassBeginInfo.pClearValues = clearValues;
+
+    for (int32_t i = 0; i < drawCmdBuffers.size(); ++i)
+    {
+        // Set target frame buffer
+        renderPassBeginInfo.framebuffer = frameBuffers[i];
+
+        VK_CHECK_RESULT(vkBeginCommandBuffer(drawCmdBuffers[i], &cmdBufInfo));
+
+        // Start the first sub pass specified in our default render pass setup by the base class
+        // This will clear the color and depth attachment
+        //vkCmdBeginRenderPass(drawCmdBuffers[i], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+        Hook_vkCmdBeginRenderPass(drawCmdBuffers[i], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+        // Update dynamic viewport state
+        VkViewport viewport = {};
+        viewport.height = (float)height;
+        viewport.width = (float)width;
+        viewport.minDepth = (float) 0.0f;
+        viewport.maxDepth = (float) 1.0f;
+        vkCmdSetViewport(drawCmdBuffers[i], 0, 1, &viewport);
+
+        // Update dynamic scissor state
+        VkRect2D scissor = {};
+        scissor.extent.width = width;
+        scissor.extent.height = height;
+        scissor.offset.x = 0;
+        scissor.offset.y = 0;
+        vkCmdSetScissor(drawCmdBuffers[i], 0, 1, &scissor);
+
+        paint(drawCmdBuffers[i]);
+
+        vkCmdEndRenderPass(drawCmdBuffers[i]);
+
+        // Ending the render pass will add an implicit barrier transitioning the frame buffer color attachment to
+        // VK_IMAGE_LAYOUT_PRESENT_SRC_KHR for presenting it to the windowing system
+
+        VK_CHECK_RESULT(vkEndCommandBuffer(drawCmdBuffers[i]));
+    }
+}
+
+#ifdef UNITY_BUILD
+void VulkanExample::ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityInterfaces* interfaces)
+{
+    switch (type)
+    {
+    case kUnityGfxDeviceEventInitialize:
+        handleUnityGfxDeviceEventInitialize(interfaces);
+        break;
+
+    case kUnityGfxDeviceEventShutdown:
+        handleUnityGfxDeviceEventShutdown();
+        break;
+
+    case kUnityGfxDeviceEventBeforeReset:
+        break;
+
+    case kUnityGfxDeviceEventAfterReset:
+        break;
+    }
+}
+
+void VulkanExample::handleUnityGfxDeviceEventShutdown()
+{
+    if (m_Instance.device != VK_NULL_HANDLE)
+    {
+        //GarbageCollect(true);
+        if (pipeline != VK_NULL_HANDLE)
+        {
+            vkDestroyPipeline(m_Instance.device, pipeline, NULL);
+            pipeline = VK_NULL_HANDLE;
+        }
+
+        vkDestroyBuffer(m_Instance.device, vertices.buffer, NULL);
+    }
+
+    m_UnityVulkan = NULL;
+    renderPass = VK_NULL_HANDLE;
+    m_Instance = XXUnityVulkanInstance();
+}
+
+void VulkanExample::handleUnityGfxDeviceEventInitialize(IUnityInterfaces* interfaces)
+{
+    m_UnityVulkan = interfaces->Get<IUnityGraphicsVulkan>();
+    m_Instance = m_UnityVulkan->Instance();
+
+    // Make sure Vulkan API functions are loaded
+    //LoadVulkanAPI(m_Instance.getInstanceProcAddr, m_Instance.instance);
+
+    XXUnityVulkanPluginEventConfig config_1;
+    config_1.graphicsQueueAccess = XXkUnityVulkanGraphicsQueueAccess_DontCare;
+    config_1.renderPassPrecondition = XXkUnityVulkanRenderPass_EnsureInside;
+    config_1.flags = XXkUnityVulkanEventConfigFlag_EnsurePreviousFrameSubmission | XXkUnityVulkanEventConfigFlag_ModifiesCommandBuffersState;
+    m_UnityVulkan->ConfigureEvent(1, &config_1);
+
+    // alternative way to intercept API
+    m_UnityVulkan->InterceptVulkanAPI("vkCmdBeginRenderPass", (PFN_vkVoidFunction)Hook_vkCmdBeginRenderPass);
+
+    /**********************************************************/
+    /*            Graphics intialization goes here            */
+    /**********************************************************/
+    // 1. Map external GPU objects to our graphics sub-system
+    mapExternalObjectToGraphicsSubSystem();
+
+    // Do the preperation
+    prepare();
+
+    // Prepare the vertices
+    prepareVertices();
+    preparePipelines();
+}
+#endif

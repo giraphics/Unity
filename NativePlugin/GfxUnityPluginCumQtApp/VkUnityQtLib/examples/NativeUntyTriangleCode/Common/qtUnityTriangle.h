@@ -26,15 +26,15 @@ public:
     VkShaderModule loadSPIRVShader(const uint32_t* pCode, size_t codeSize);
     void paint(VkCommandBuffer commandBuffer);
 
-#ifndef UNITY_BUILD
-    void buildCommandBuffers();
-#endif
+    void buildCommandBuffers() override;
     void render() override;
     void prepare() override;
 
 #ifdef UNITY_BUILD
     virtual void ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityInterfaces* interfaces);
-    virtual void DrawTriangle();
+private:
+    void handleUnityGfxDeviceEventInitialize(IUnityInterfaces* interfaces);
+    void handleUnityGfxDeviceEventShutdown();
 #endif
 
 private:
