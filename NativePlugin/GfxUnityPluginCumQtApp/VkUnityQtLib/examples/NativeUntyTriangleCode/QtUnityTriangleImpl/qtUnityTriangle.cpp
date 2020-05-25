@@ -15,7 +15,7 @@ static VKAPI_ATTR void VKAPI_CALL Hook_vkCmdBeginRenderPass(VkCommandBuffer comm
         patchedBeginInfo.pClearValues = clearValues;
         for (unsigned int i = 0; i < pRenderPassBegin->clearValueCount - 1; ++i)
         {
-            clearValues[i].color.float32[0] = 0.0f;
+            clearValues[i].color.float32[0] = 1.0f;
             clearValues[i].color.float32[1] = 0.0f;
             clearValues[i].color.float32[2] = 0.2f;
             clearValues[i].color.float32[3] = 1.0f;
@@ -51,7 +51,7 @@ void VulkanExample::prepareVertices()
     std::vector<Vertex> vertexBuffer =
     {
         { {  1.0f,  1.0f, 0.0f }, { 1.0f, 0.0f, 0.0f } },
-        { { -1.0f,  1.0f, 0.0f }, { 1.0f, 0.0f, 0.0f } },
+        { { -1.0f,  1.0f, 0.0f }, { 0.0f, 1.0f, 0.0f } },
         { {  0.0f, -1.0f, 0.0f }, { 0.0f, 0.0f, 1.0f } }
     };
     uint32_t vertexBufferSize = static_cast<uint32_t>(vertexBuffer.size()) * sizeof(Vertex);

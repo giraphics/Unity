@@ -17,9 +17,9 @@
 #include "vulkanexamplebase.h"
 
 #ifdef UNITY_BUILD
-#include "Unity/IUnityGraphicsVulkan.h"
+#include "../PluginSource/source/Unity/IUnityGraphicsVulkan.h"
 #endif
-#include "Unity/IUnityGraphics.h"
+#include "../PluginSource/source/Unity/IUnityGraphics.h"
 
 // Set to "true" to enable Vulkan's validation layers (see vulkandebug.cpp for details)
 #define ENABLE_VALIDATION false
