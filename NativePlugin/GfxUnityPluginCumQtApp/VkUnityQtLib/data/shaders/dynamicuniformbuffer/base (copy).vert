@@ -26,5 +26,5 @@ void main()
 	outColor = inColor;
 	mat4 modelView = uboView.view * uboInstance.model;
 	vec3 worldPos = vec3(modelView * vec4(inPos, 1.0));
-        gl_Position = uboView.projection * modelView * vec4(inPos.xyz, 1.0);
+	gl_Position = uboView.projection * modelView * vec4(inPos.xyz, 1.0);
 }

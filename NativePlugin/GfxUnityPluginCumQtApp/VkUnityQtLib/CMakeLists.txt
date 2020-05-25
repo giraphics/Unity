@@ -116,13 +116,13 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
 file(GLOB_RECURSE COMMON_BASE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/base/*.*)
 
-file(GLOB_RECURSE UNITY_SOURCE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/examples/NativeUntyTriangleCode/PluginSource/source/*.*)
-file(GLOB_RECURSE QT_UNITY_IMPL ${CMAKE_CURRENT_SOURCE_DIR}/examples/NativeUntyTriangleCode/QtUnityTriangleImpl/*.*)
-add_library(${Unity_Plugin_Lib} SHARED ${COMMON_BASE_FILES} ${RESOURCE_FILES}  ${UNITY_SOURCE_FILES} ${QT_UNITY_IMPL})
-
-#file(GLOB_RECURSE UNITY_SOURCE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/examples/dynamicuniformbuffer/PluginSource/source/*.*)
-#file(GLOB_RECURSE QT_UNITY_IMPL ${CMAKE_CURRENT_SOURCE_DIR}/examples/dynamicuniformbuffer/Common/*.*)
+#file(GLOB_RECURSE UNITY_SOURCE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/examples/NativeUntyTriangleCode/PluginSource/source/*.*)
+#file(GLOB_RECURSE QT_UNITY_IMPL ${CMAKE_CURRENT_SOURCE_DIR}/examples/NativeUntyTriangleCode/QtUnityTriangleImpl/*.*)
 #add_library(${Unity_Plugin_Lib} SHARED ${COMMON_BASE_FILES} ${RESOURCE_FILES}  ${UNITY_SOURCE_FILES} ${QT_UNITY_IMPL})
+
+file(GLOB_RECURSE UNITY_SOURCE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/examples/NativeUntyDynamicuniformbuffer/PluginSource/source/*.*)
+file(GLOB_RECURSE QT_UNITY_IMPL ${CMAKE_CURRENT_SOURCE_DIR}/examples/NativeUntyDynamicuniformbuffer/QtUnityDynamicUniformBufferImpl/*.*)
+add_library(${Unity_Plugin_Lib} SHARED ${COMMON_BASE_FILES} ${RESOURCE_FILES}  ${UNITY_SOURCE_FILES} ${QT_UNITY_IMPL})
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}external)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/base)
@@ -139,12 +139,14 @@ target_compile_definitions(${Unity_Plugin_Lib} PRIVATE UNITY_BUILD)
 ############################################################
 
 # Add an executable with the above sources
-file(GLOB_RECURSE QT_SRC_FILES ${CMAKE_CURRENT_SOURCE_DIR}/examples/NativeUntyTriangleCode/QtAppSource/*.*)
-add_executable(${Qt_Binary} ${QT_SRC_FILES} ${COMMON_BASE_FILES} ${RESOURCE_FILES} ${QT_UNITY_IMPL})
+#file(GLOB_RECURSE QT_SRC_FILES ${CMAKE_CURRENT_SOURCE_DIR}/examples/NativeUntyTriangleCode/QtAppSource/*.*)
+#add_executable(${Qt_Binary} ${QT_SRC_FILES} ${COMMON_BASE_FILES} ${RESOURCE_FILES} ${QT_UNITY_IMPL})
 
 #file(GLOB_RECURSE QT_SRC_FILES ${CMAKE_CURRENT_SOURCE_DIR}/examples/triangle/*.*)
-#file(GLOB_RECURSE QT_SRC_FILES ${CMAKE_CURRENT_SOURCE_DIR}/examples/dynamicuniformbuffer/*.*)
 #add_executable(${Qt_Binary} ${QT_SRC_FILES} ${COMMON_BASE_FILES} ${RESOURCE_FILES})
+
+file(GLOB_RECURSE QT_SRC_FILES ${CMAKE_CURRENT_SOURCE_DIR}/examples/NativeUntyDynamicuniformbuffer/QtUnityDynamicUniformBufferImpl/*.*)
+add_executable(${Qt_Binary} ${QT_SRC_FILES} ${COMMON_BASE_FILES} ${RESOURCE_FILES})
 
 target_link_libraries(${Qt_Binary} ${XCB_LIBRARIES} ${Vulkan_LIBRARY})
 

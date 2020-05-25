@@ -14,7 +14,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 
 #include <vulkan/vulkan.h>
-#include "vulkanexamplebase.h"
+#include "QtUIVulkanExample.h"
 #include "VulkanDevice.hpp"
 #include "VulkanBuffer.hpp"
 
@@ -28,7 +28,7 @@ struct Vertex {
 	float color[3];
 };
 
-class VulkanExample : public VulkanExampleBase
+class VulkanExample : public QtUIVulkanExample
 {
 public:
 	struct {
@@ -87,6 +87,7 @@ public:
 
     void setupDescriptorSet();
 
+    VkShaderModule loadSPIRVShader(const uint32_t *pCode, size_t codeSize);
     void preparePipelines();
 
     // Prepare and initialize uniform buffer containing shader uniforms

@@ -1,5 +1,6 @@
 #include "dynamicuniformbuffer.h"
 
+#include "../../VkUnityQtLib/data/shaders/dynamicuniformbuffer/dynamicUniformBufferShader.h"
 
 // Wrapper functions for aligned memory allocation
 // There is currently no standard for this in C++ that works across all platforms and vendors, so we abstract this
@@ -25,7 +26,33 @@ void alignedFree(void* data)
 #endif
 }
 
-VulkanExample::VulkanExample() : VulkanExampleBase(ENABLE_VALIDATION)
+static VKAPI_ATTR void VKAPI_CALL Hook_vkCmdBeginRenderPass(VkCommandBuffer commandBuffer, const VkRenderPassBeginInfo* pRenderPassBegin, VkSubpassContents contents)
+{
+    // Change this to 'true' to override the clear color with green
+    const bool allowOverrideClearColor = true; // Parminder: changed to true
+    if (pRenderPassBegin->clearValueCount <= 16 && pRenderPassBegin->clearValueCount > 0 && allowOverrideClearColor)
+    {
+        VkClearValue clearValues[16] = {};
+        memcpy(clearValues, pRenderPassBegin->pClearValues, pRenderPassBegin->clearValueCount * sizeof(VkClearValue));
+
+        VkRenderPassBeginInfo patchedBeginInfo = *pRenderPassBegin;
+        patchedBeginInfo.pClearValues = clearValues;
+        for (unsigned int i = 0; i < pRenderPassBegin->clearValueCount - 1; ++i)
+        {
+            clearValues[i].color.float32[0] = 0.0f;
+            clearValues[i].color.float32[1] = 1.0f;
+            clearValues[i].color.float32[2] = 0.2f;
+            clearValues[i].color.float32[3] = 1.0f;
+        }
+        vkCmdBeginRenderPass(commandBuffer, &patchedBeginInfo, contents);
+    }
+    else
+    {
+        vkCmdBeginRenderPass(commandBuffer, pRenderPassBegin, contents);
+    }
+}
+
+VulkanExample::VulkanExample() : QtUIVulkanExample()
 {
     title = "Dynamic uniform buffers";
     camera.type = Camera::CameraType::lookat;
@@ -321,7 +348,9 @@ void VulkanExample::paint(VkCommandBuffer commandBuffer)
         vkCmdDrawIndexed(commandBuffer, indexCount, 1, 0, 0, 0);
     }
 
+#ifndef UNITY_BUILD
     drawUI(commandBuffer);
+#endif
 }
 
 void VulkanExample::render()
@@ -338,6 +367,7 @@ void VulkanExample::render()
 #else
     draw();
 #endif
+
     if (!paused)
         updateDynamicUniformBuffer();
 }
@@ -345,6 +375,14 @@ void VulkanExample::render()
 void VulkanExample::prepare()
 {
 #ifdef UNITY_BUILD
+   createPipelineCache(); // Pipeline cache object for unity
+   generateCube();
+   setupVertexDescriptions();
+   prepareUniformBuffers();
+   setupDescriptorSetLayout();
+   preparePipelines();
+   setupDescriptorPool();
+   setupDescriptorSet();
 #else
      VulkanExampleBase::prepare();
     generateCube();
@@ -398,6 +436,19 @@ void VulkanExample::buildCommandBuffers()
     }
 }
 
+VkShaderModule VulkanExample::loadSPIRVShader(const uint32_t *pCode, size_t codeSize)
+{
+    VkShaderModuleCreateInfo moduleCreateInfo{};
+    moduleCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+    moduleCreateInfo.codeSize = codeSize;
+    moduleCreateInfo.pCode = pCode;
+
+    VkShaderModule shaderModule;
+    VK_CHECK_RESULT(vkCreateShaderModule(device, &moduleCreateInfo, NULL, &shaderModule));
+
+    return shaderModule;
+}
+
 void VulkanExample::preparePipelines()
 {
     VkPipelineInputAssemblyStateCreateInfo inputAssemblyState =
@@ -448,10 +499,41 @@ void VulkanExample::preparePipelines()
                 0);
 
     // Load shaders
-    std::array<VkPipelineShaderStageCreateInfo, 2> shaderStages;
+//    std::array<VkPipelineShaderStageCreateInfo, 2> shaderStages;
 
-    shaderStages[0] = loadShader(getAssetPath() + "shaders/dynamicuniformbuffer/base.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
-    shaderStages[1] = loadShader(getAssetPath() + "shaders/dynamicuniformbuffer/base.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+////    shaderStages[0] = loadShader(getAssetPath() + "shaders/dynamicuniformbuffer/base.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+////    shaderStages[1] = loadShader(getAssetPath() + "shaders/dynamicuniformbuffer/base.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+
+//    shaderStages[0] = loadShader("/media/parminder/Data/Dev/GiraphicsRepo/Unity/NativePlugin/GfxUnityPluginCumQtApp/VkUnityQtLib/data/shaders/dynamicuniformbuffer/base.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+//    shaderStages[1] = loadShader("/media/parminder/Data/Dev/GiraphicsRepo/Unity/NativePlugin/GfxUnityPluginCumQtApp/VkUnityQtLib/data/shaders/dynamicuniformbuffer/base.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+
+//    shaderStages[0].module = loadSPIRVShader(dynamicUniformBufferVertexShaderSpirv, sizeof(dynamicUniformBufferVertexShaderSpirv));
+//    shaderStages[1].module = loadSPIRVShader(dynamicUniformBufferFragmentShaderSpirv, sizeof(dynamicUniformBufferFragmentShaderSpirv));
+
+    // Shaders
+    std::array<VkPipelineShaderStageCreateInfo, 2> shaderStages{};
+
+    // Vertex shader
+    shaderStages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    // Set pipeline stage for this shader
+    shaderStages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
+    // Load binary SPIR-V shader
+    //shaderStages[0].module = loadSPIRVShader(getAssetPath() + "shaders/triangle/triangle.vert.spv");
+    shaderStages[0].module = loadSPIRVShader(dynamicUniformBufferVertexShaderSpirv, sizeof(dynamicUniformBufferVertexShaderSpirv));
+    // Main entry point for the shader
+    shaderStages[0].pName = "main";
+    assert(shaderStages[0].module != VK_NULL_HANDLE);
+
+    // Fragment shader
+    shaderStages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    // Set pipeline stage for this shader
+    shaderStages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+    // Load binary SPIR-V shader
+    //        shaderStages[1].module = loadSPIRVShader(getAssetPath() + "shaders/triangle/triangle.frag.spv");
+    shaderStages[1].module = loadSPIRVShader(dynamicUniformBufferFragmentShaderSpirv, sizeof(dynamicUniformBufferFragmentShaderSpirv));
+    // Main entry point for the shader
+    shaderStages[1].pName = "main";
+    assert(shaderStages[1].module != VK_NULL_HANDLE);
 
     VkGraphicsPipelineCreateInfo pipelineCreateInfo =
             vks::initializers::pipelineCreateInfo(
@@ -505,7 +587,7 @@ void VulkanExample::handleUnityGfxDeviceEventShutdown()
             pipeline = VK_NULL_HANDLE;
         }
 
-        vkDestroyBuffer(m_Instance.device, vertices.buffer, NULL);
+        //vkDestroyBuffer(m_Instance.device, vertices.buffer, NULL);
     }
 
     m_UnityVulkan = NULL;
@@ -538,9 +620,5 @@ void VulkanExample::handleUnityGfxDeviceEventInitialize(IUnityInterfaces* interf
 
     // Do the preperation
     prepare();
-
-    // Prepare the vertices
-    prepareVertices();
-    preparePipelines();
 }
 #endif
